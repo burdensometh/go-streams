@@ -121,6 +121,9 @@ func (th *Throttler) buffer() {
 			select {
 			case th.out <- element:
 			default:
+				// notify a source that the element has been intentionally
+				// dropped, so it can advance its progress.
+				discardElement(element)
 			}
 		}
 	case Backpressure:

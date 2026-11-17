@@ -7,6 +7,14 @@ import (
 	"github.com/reugn/go-streams"
 )
 
+// discardElement reports that the element has been intentionally dropped by
+// the pipeline, if the element supports it.
+func discardElement(element any) {
+	if discarder, ok := element.(streams.Discarder); ok {
+		discarder.Discard()
+	}
+}
+
 // DoStream streams data from the outlet to inlet.
 func DoStream(outlet streams.Outlet, inlet streams.Inlet) {
 	go func() {

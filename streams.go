@@ -58,3 +58,20 @@ type Sink interface {
 	// input stream is closed by the upstream.
 	AwaitCompletion()
 }
+
+// Discarder represents a stream element that can be explicitly discarded by a
+// flow, as opposed to being dropped silently.
+//
+// A flow that intentionally does not forward an element (for example, a Filter
+// whose predicate is false, or a Throttler in discard mode) should call
+// Discard on the element if it implements this interface. This lets sources
+// that require a processing confirmation, such as the Kafka source with
+// acknowledgment tracking enabled, distinguish an intentional drop from a lost
+// element and advance their progress accordingly.
+//
+// Implement this interface to allow an element to be discarded by the
+// pipeline.
+type Discarder interface {
+	// Discard reports that the element has been intentionally dropped.
+	Discard()
+}

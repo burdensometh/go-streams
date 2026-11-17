@@ -19,6 +19,9 @@ func main() {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
+	// The acknowledgment chain controls the offsets manually, so the
+	// automatic offset commits must be disabled.
+	config.Consumer.Offsets.AutoCommit.Enable = false
 	config.Producer.Return.Successes = true
 	config.Version, _ = sarama.ParseKafkaVersion("3.6.2")
 	groupID := "testConsumer"
@@ -28,18 +31,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	source := ext.NewSaramaSource(ctx, consumerGroup, []string{"test"}, nil)
+	// Emit records that must be confirmed by the pipeline. A record is
+	// committed only after the sink has written it, or after a flow has
+	// explicitly discarded it.
+	source := ext.NewSaramaSource(ctx, consumerGroup, []string{"test"}, nil,
+		ext.WithAckTracking())
 
 	syncProducer, err := sarama.NewSyncProducer(hosts, config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// The sink acknowledges the records it has successfully written.
 	sink := ext.NewSaramaSink(syncProducer, "test2", nil)
 
 	toUpperMapFlow := flow.NewMap(toUpper, 1)
 	throttler := flow.NewThrottler(1, time.Second, 50, flow.Discard)
-	tumblingWindow := flow.NewTumblingWindow[*sarama.ConsumerMessage](time.Second * 5)
+	tumblingWindow := flow.NewTumblingWindow[*ext.Record](time.Second * 5)
 	appendAsteriskFlatMapFlow := flow.NewFlatMap(appendAsterisk, 1)
 
 	source.
@@ -50,16 +58,14 @@ func main() {
 		To(sink)
 }
 
-var toUpper = func(msg *sarama.ConsumerMessage) *sarama.ConsumerMessage {
-	msg.Value = []byte(strings.ToUpper(string(msg.Value)))
-	return msg
+var toUpper = func(record *ext.Record) *ext.Record {
+	record.Value = []byte(strings.ToUpper(string(record.Value)))
+	return record
 }
 
-var appendAsterisk = func(inMessages []*sarama.ConsumerMessage) []*sarama.ConsumerMessage {
-	outMessages := make([]*sarama.ConsumerMessage, len(inMessages))
-	for i, msg := range inMessages {
-		msg.Value = []byte(string(msg.Value) + "*")
-		outMessages[i] = msg
+var appendAsterisk = func(inRecords []*ext.Record) []*ext.Record {
+	for _, record := range inRecords {
+		record.Value = []byte(string(record.Value) + "*")
 	}
-	return outMessages
+	return inRecords
 }

@@ -51,6 +51,11 @@ processing operations. These building blocks can be used to transform and manipu
 
 **<sup>1</sup>** Utility Flows
 
+Flows that intentionally drop elements (e.g. `Filter` and `Throttler` in discard mode) call
+`Discard` on elements implementing the `streams.Discarder` interface. This lets sources that
+require a processing confirmation, such as the Kafka source with acknowledgment tracking, treat
+the drop as a completed element.
+
 ### Connectors
 Standard `Source` and `Sink` implementations are located in the [extension](extension) package.
 

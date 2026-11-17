@@ -100,6 +100,10 @@ func (f *Filter[T]) stream() {
 			for element := range f.in {
 				if f.filterPredicate(element.(T)) {
 					f.out <- element
+				} else {
+					// notify a source that the element has been intentionally
+					// dropped, so it can advance its progress.
+					discardElement(element)
 				}
 			}
 		}()
