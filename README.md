@@ -48,6 +48,8 @@ processing operations. These building blocks can be used to transform and manipu
 - **TumblingWindow:** Creates non-overlapping, fixed-size windows of elements.
 - **SessionWindow:** Creates windows based on periods of activity and inactivity.
 - **Keyed:** Groups elements by key for parallel processing of related data.
+- **AsOfJoin:** Enriches event-time records with the latest keyed dimension version effective
+  at the record time, using dual watermarks and separate late/reject outputs.
 
 **<sup>1</sup>** Utility Flows
 
